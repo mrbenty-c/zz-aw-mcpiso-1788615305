@@ -6,7 +6,6 @@ permissions:
   contents: read
 engine:
   id: copilot
-model: copilot/gpt-5.4
 max-turns: 8
 timeout-minutes: 10
 mcp-scripts:
