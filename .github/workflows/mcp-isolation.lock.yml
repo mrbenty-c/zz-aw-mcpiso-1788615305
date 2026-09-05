@@ -710,6 +710,40 @@ jobs:
 
           bash "${RUNNER_TEMP}/gh-aw/actions/start_mcp_scripts_server.sh"
 
+      - name: Live MCP Scripts sibling-secret isolation probe
+        env:
+          MCP_PORT: ${{ steps.mcp-scripts-start.outputs.port }}
+          EXPECTED_SHA: 7a8464a428e87006aa9e82941e4f901e4d25b3f715071e0799f97cf3a510ed85
+        run: |
+          set -euo pipefail
+          call_tool() {
+            local name="$1"
+            curl -sS --fail-with-body \
+              -H 'Content-Type: application/json' \
+              -H 'Accept: application/json, text/event-stream' \
+              --data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"${name}\",\"arguments\":{}}}" \
+              "http://127.0.0.1:${MCP_PORT}/"
+          }
+          UNAUTHORIZED=$(call_tool unauthorized_hash)
+          AUTHORIZED=$(call_tool authorized_hash)
+          echo "UNAUTHORIZED_RESPONSE=${UNAUTHORIZED}"
+          echo "AUTHORIZED_RESPONSE=${AUTHORIZED}"
+          python3 - "$EXPECTED_SHA" "$UNAUTHORIZED" "$AUTHORIZED" <<'PYLIVE'
+          import json,sys
+          expected=sys.argv[1]
+          def extract(raw):
+              j=json.loads(raw)
+              content=j['result']['content']
+              texts=[x.get('text','') for x in content if isinstance(x,dict)]
+              joined='\n'.join(texts)
+              if expected not in joined:
+                  raise SystemExit(f'expected hash absent from MCP result: {joined!r}')
+              return joined
+          u=extract(sys.argv[2]); a=extract(sys.argv[3])
+          print('LIVE_TARGET_UNAUTHORIZED_MATCH=true')
+          print('LIVE_TARGET_AUTHORIZED_CONTROL_MATCH=true')
+          print('EXPECTED_SHA256='+expected)
+          PYLIVE
       - name: Start MCP Gateway
         id: start-mcp-gateway
         env:
