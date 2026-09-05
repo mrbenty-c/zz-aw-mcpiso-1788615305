@@ -4,7 +4,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-  copilot-requests: write
 engine:
   id: copilot
 model: copilot/gpt-5.4
