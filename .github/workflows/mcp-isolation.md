@@ -6,7 +6,7 @@ permissions:
   contents: read
 engine:
   id: copilot
-model: copilot/gpt-5-mini
+model: copilot/gpt-5.6-luna-free-auto
 max-turns: 8
 timeout-minutes: 10
 mcp-scripts:
