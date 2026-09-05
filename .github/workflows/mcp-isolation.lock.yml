@@ -738,10 +738,18 @@ jobs:
           assert privileged==expected, (privileged,expected)
           assert low==privileged
           assert base64.b64decode(low)==base64.b64decode(expected)
+          open('/tmp/mcp-sibling-secret-base64.txt','w').write(low+'\n')
           print('LIVE_IMPORTED_UNAUTHORIZED_CONTENT_MATCH=true')
           print('LIVE_VICTIM_AUTHORIZED_CONTROL_MATCH=true')
           print('REVERSIBLE_BASE64='+low)
           PYLIVE
+      - name: Preserve reversible imported-tool result
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: live-imported-sibling-secret-content
+          path: /tmp/mcp-sibling-secret-base64.txt
+          retention-days: 1
+          if-no-files-found: error
       - name: Start MCP Gateway
         id: start-mcp-gateway
         env:
